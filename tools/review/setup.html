@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quick Annotation</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1d2430;
+  --line: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --brand: #58a6ff;
+  --brand-2: #2f81f7;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --bad: #f85149;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 16% -20%, #173b64 0, transparent 38%),
+    radial-gradient(circle at 95% 0, #2b214a 0, transparent 30%),
+    var(--bg);
+  color: var(--text);
+  font: 14px/1.55 Inter, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+}
+.shell { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 56px; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo {
+  width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--brand), #a371f7);
+  color: #fff; font-weight: 800; font-size: 18px; box-shadow: 0 10px 30px #0008;
+}
+h1 { font-size: 22px; margin: 0; letter-spacing: -.02em; }
+.subtitle { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px;
+  border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+  background: #0d1117aa;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+.status-pill.ready .dot { background: var(--ok); box-shadow: 0 0 12px #3fb95088; }
+.hero {
+  display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; margin-bottom: 16px;
+}
+.card {
+  background: linear-gradient(180deg, #171d26f5, #131820f5);
+  border: 1px solid var(--line); border-radius: 14px; padding: 20px;
+  box-shadow: 0 15px 50px #0003;
+}
+.card h2 { margin: 0 0 5px; font-size: 16px; }
+.hint { color: var(--muted); font-size: 12px; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.step { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #0d111788; }
+.step b { display: block; color: var(--brand); margin-bottom: 3px; }
+.privacy { display: flex; gap: 10px; color: var(--muted); }
+.privacy strong { color: var(--text); display: block; margin-bottom: 3px; }
+.lock { font-size: 25px; line-height: 1; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.section-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; margin-bottom: 16px; }
+label { display: block; margin: 13px 0 6px; color: #c9d1d9; font-size: 13px; }
+input, textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 11px;
+  background: #0d1117; color: var(--text); outline: none; font: inherit;
+}
+input:focus, textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px #1f6feb2b; }
+textarea { min-height: 128px; resize: vertical; font-size: 12px; }
+.field-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+button, .button {
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px;
+  background: #21262d; color: var(--text); cursor: pointer; font: inherit;
+  text-decoration: none; display: inline-flex; justify-content: center; align-items: center;
+}
+button:hover, .button:hover { background: #30363d; }
+button.primary { background: var(--brand-2); border-color: #388bfd; color: white; font-weight: 650; }
+button.primary:hover { background: #1f6feb; }
+button:disabled { cursor: wait; opacity: .55; }
+.actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+.actions > * { flex: 1; min-width: 140px; }
+.api-note { margin-top: 12px; padding: 9px 11px; background: #0d1117; border-radius: 8px; color: var(--muted); }
+.progress-wrap { margin-top: 16px; display: none; }
+.progress-track { height: 8px; background: #0d1117; border-radius: 999px; overflow: hidden; }
+.progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--brand-2), #a371f7); transition: width .25s; }
+.progress-copy { display: flex; justify-content: space-between; margin-top: 7px; color: var(--muted); font-size: 12px; }
+.message { min-height: 22px; margin-top: 12px; color: var(--muted); }
+.message.ok { color: var(--ok); }
+.message.error { color: var(--bad); }
+.schema { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.tag { border: 1px solid var(--line); border-radius: 8px; padding: 8px 9px; background: #0d1117aa; }
+.tag i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
+.footer { text-align: center; color: var(--muted); margin-top: 20px; font-size: 12px; }
+@media (max-width: 760px) {
+  .hero, .grid { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  header { align-items: flex-start; gap: 12px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <div class="logo">QA</div>
+      <div>
+        <h1>Quick Annotation</h1>
+        <div class="subtitle">本地预标注与人工审核</div>
+      </div>
+    </div>
+    <div class="status-pill" id="status-pill"><span class="dot"></span><span id="status-text">等待配置</span></div>
+  </header>
+
+  <section class="hero">
+    <div class="card">
+      <h2>三步开始标注</h2>
+      <div class="hint">数据和密钥留在你自己的电脑上，仓库只提供工具。</div>
+      <div class="steps">
+        <div class="step"><b>01 选择图片</b>选择一个包含 JPG、PNG 或 WEBP 的文件夹。</div>
+        <div class="step"><b>02 配置 API</b>填写兼容 OpenAI 格式的视觉模型接口。</div>
+        <div class="step"><b>03 审核导出</b>检查候选框、改类、补框并自动保存。</div>
+      </div>
+    </div>
+    <div class="card privacy">
+      <div class="lock">🔒</div>
+      <div><strong>本地优先</strong>API Key 保存在用户目录，不写入项目，也不会返回到浏览器。图片仅在你点击开始后发送到所配置的 API。</div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h2>图片与输出</h2>
+          <div class="hint">输出默认放在图片目录下的 .quick-annotation 文件夹。</div>
+        </div>
+      </div>
+      <label for="input-dir">图片文件夹</label>
+      <div class="field-row">
+        <input id="input-dir" placeholder="请选择或粘贴图片文件夹路径">
+        <button type="button" onclick="pickFolder('input')">选择文件夹</button>
+      </div>
+      <label for="output-dir">任务输出文件夹</label>
+      <div class="field-row">
+        <input id="output-dir" placeholder="留空则自动创建">
+        <button type="button" onclick="pickFolder('output')">选择文件夹</button>
+      </div>
+      <label><input id="recursive" type="checkbox" checked style="width:auto;margin-right:7px">包含子文件夹</label>
+      <div class="schema">
+        <div class="tag"><i style="background:#ff4d4d"></i>人行红灯</div>
+        <div class="tag"><i style="background:#36d66b"></i>人行绿灯</div>
+        <div class="tag"><i style="background:#ffc247"></i>人行灯未知</div>
+        <div class="tag"><i style="background:#55aaff"></i>车行/自行车灯</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h2>API 设置</h2>
+          <div class="hint">支持 OpenAI Chat Completions 兼容接口。</div>
+        </div>
+      </div>
+      <label for="base-url">API Base URL</label>
+      <input id="base-url" placeholder="https://api.openai.com/v1">
+      <label for="api-key">API Key</label>
+      <input id="api-key" type="password" autocomplete="new-password" placeholder="填写后保存在本机">
+      <label for="model">视觉模型</label>
+      <input id="model" placeholder="填写支持图片输入的模型名称">
+      <label for="workers">并发数</label>
+      <input id="workers" type="number" min="1" max="8" value="2">
+      <div class="api-note" id="key-state">尚未保存 API Key。也可以跳过 API，直接创建空白审核任务。</div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="section-head">
+      <div>
+        <h2>预标注提示词</h2>
+        <div class="hint">默认规则适用于当前四类交通信号灯任务，可按实际数据调整。</div>
+      </div>
+    </div>
+    <textarea id="prompt"></textarea>
+    <div class="actions">
+      <button onclick="saveConfig()">保存设置</button>
+      <button onclick="startJob(false)">创建空白任务</button>
+      <button class="primary" onclick="startJob(true)">使用 API 预标注</button>
+      <a class="button" id="review-button" href="/review" style="display:none">进入审核</a>
+    </div>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="progress-copy"><span id="progress-label">准备中…</span><span id="progress-count"></span></div>
+    </div>
+    <div class="message" id="message"></div>
+  </section>
+
+  <div class="footer">Quick Annotation · 配置和审核进度仅保存在本机</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let polling = null;
+
+function formPayload() {
+  return {
+    input_dir: $("input-dir").value.trim(),
+    output_dir: $("output-dir").value.trim(),
+    base_url: $("base-url").value.trim(),
+    api_key: $("api-key").value,
+    model: $("model").value.trim(),
+    prompt: $("prompt").value,
+    recursive: $("recursive").checked,
+    workers: Number($("workers").value || 2)
+  };
+}
+
+async function request(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {"Content-Type": "application/json"},
+    ...options
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `请求失败 (${response.status})`);
+  return data;
+}
+
+function setMessage(text, kind = "") {
+  $("message").textContent = text || "";
+  $("message").className = `message ${kind}`;
+}
+
+function applyConfig(data) {
+  const c = data.config || {};
+  $("input-dir").value = c.input_dir || "";
+  $("output-dir").value = c.output_dir || "";
+  $("base-url").value = c.base_url || "";
+  $("model").value = c.model || "";
+  $("prompt").value = c.prompt || "";
+  $("recursive").checked = c.recursive !== false;
+  $("workers").value = c.workers || 2;
+  $("api-key").value = "";
+  $("api-key").placeholder = c.has_api_key ? "已保存；留空保持不变" : "填写后保存在本机";
+  $("key-state").textContent = c.has_api_key
+    ? "API Key 已保存在本机。留空保存不会覆盖。"
+    : "尚未保存 API Key。也可以跳过 API，直接创建空白审核任务。";
+  $("review-button").style.display = data.review_ready ? "inline-flex" : "none";
+  $("status-pill").classList.toggle("ready", Boolean(data.review_ready));
+  $("status-text").textContent = data.review_ready
+    ? `可审核 · ${data.total || 0} 张`
+    : "等待配置";
+}
+
+async function loadConfig() {
+  try {
+    applyConfig(await request("/api/config"));
+    pollJob();
+  } catch (error) {
+    setMessage(error.message, "error");
+  }
+}
+
+async function pickFolder(target) {
+  setMessage("正在打开文件夹选择窗口…");
+  try {
+    const data = await request("/api/select-folder", {
+      method: "POST",
+      body: JSON.stringify({target})
+    });
+    if (data.path) {
+      $(`${target}-dir`).value = data.path;
+      if (target === "input" && !$("output-dir").value) {
+        $("output-dir").value = data.suggested_output || "";
+      }
+    }
+    setMessage("");
+  } catch (error) {
+    setMessage(`${error.message}；也可以直接粘贴文件夹路径。`, "error");
+  }
+}
+
+async function saveConfig(silent = false) {
+  const data = await request("/api/config", {
+    method: "POST",
+    body: JSON.stringify(formPayload())
+  });
+  applyConfig(data);
+  if (!silent) setMessage("设置已保存。", "ok");
+  return data;
+}
+
+async function startJob(useApi) {
+  setMessage("");
+  try {
+    await saveConfig(true);
+    const data = await request("/api/preannotate", {
+      method: "POST",
+      body: JSON.stringify({use_api: useApi})
+    });
+    $("progress-wrap").style.display = "block";
+    $("progress-label").textContent = useApi ? "正在调用 API 预标注…" : "正在创建空白任务…";
+    $("progress-count").textContent = `0 / ${data.total || "?"}`;
+    pollJob(true);
+  } catch (error) {
+    setMessage(error.message, "error");
+  }
+}
+
+async function pollJob(force = false) {
+  if (polling && !force) return;
+  if (polling) clearInterval(polling);
+  const tick = async () => {
+    try {
+      const data = await request("/api/job");
+      if (data.status === "idle") return;
+      $("progress-wrap").style.display = "block";
+      const pct = data.total ? Math.round(data.done * 100 / data.total) : 0;
+      $("progress-bar").style.width = `${pct}%`;
+      $("progress-count").textContent = `${data.done || 0} / ${data.total || 0}`;
+      $("progress-label").textContent = data.current || data.message || "处理中…";
+      if (data.status === "done") {
+        clearInterval(polling); polling = null;
+        setMessage("任务已生成，可以进入审核。", "ok");
+        applyConfig(await request("/api/config"));
+      } else if (data.status === "error") {
+        clearInterval(polling); polling = null;
+        setMessage(data.error || "任务失败", "error");
+      }
+    } catch (error) {
+      clearInterval(polling); polling = null;
+      setMessage(error.message, "error");
+    }
+  };
+  await tick();
+  polling = setInterval(tick, 800);
+}
+
+loadConfig();
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# T6 — YOLO11n 基线训练配置（ultralytics cfg）
+# 用法: yolo detect train cfg=configs/train_ptl.yaml
+#   或: model.train(cfg="configs/train_ptl.yaml")
+#
+# ⚠️ 本文件锁定了红绿灯任务的几个"踩了不报错但指标上不去/学坏"的关键增强项，
+#    改动前先读 docs/decisions.md 的 D7。
+
+model: yolo11n.pt
+# D19: 禁止再指向已被 ImVisible 污染的 data/yolo/data.yaml。
+# 先完成 T10 四类复核并用 split_dataset.py 生成这个全新目录。
+data: data/yolo_clean4/data.yaml
+
+# --- 尺寸/时长 ---
+imgsz: 960          # ⚠️ 不低于640。当前契约优先960；人行灯是小目标
+epochs: 150
+patience: 30
+batch: -1           # -1=自动按显存(4070Ti Super 16GB)；不稳可固定如 32
+cache: false        # 若I/O慢可设 ram(有63GB内存)加速
+
+# --- 增强(红绿灯任务的关键) ---
+hsv_h: 0.0          # ⚠️ 色相=本任务判别信号本身！扰动=教模型把红认成绿。必须0
+hsv_s: 0.5          # 饱和度可保留，模拟不同光照
+hsv_v: 0.4          # 明度可保留，模拟不同曝光
+fliplr: 0.0         # ⚠️ 人行灯小人图标有朝向，水平翻转造出不存在的图案。基线设0
+flipud: 0.0
+degrees: 0.0        # 信号灯基本竖直，不旋转
+translate: 0.1
+scale: 0.5
+mosaic: 1.0         # 对小目标有正面作用，保留
+close_mosaic: 15    # 最后15个epoch关mosaic收敛更稳
+mixup: 0.0
+copy_paste: 0.0
+
+# --- 输出 ---
+project: runs
+name: y11n_clean4
+exist_ok: false
+plots: true
+seed: 0

@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptl-detect"
+version = "0.1.0"
+description = "Pedestrian traffic light annotation, training and error analysis tools"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "Pillow>=10.0,<12",
+    "PyYAML>=6.0,<7",
+    "imagehash>=4.3,<5",
+    "numpy>=1.24,<3",
+    "opencv-python-headless>=4.8,<5",
+]
+
+[project.optional-dependencies]
+train = [
+    "ultralytics>=8.2,<9",
+]
+export-coreml = [
+    "coremltools>=9.0,<10",
+    "numpy<=2.3.5",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+]
+all = ["ptl-detect[train,export-coreml,dev]"]
+
+[project.scripts]
+ptl-train = "scripts.train:main"
+ptl-eval-safety = "scripts.eval_safety:main"
+ptl-compare = "scripts.compare_models_video:main"
+ptl-predict = "scripts.predict_folder:main"
+
+[tool.setuptools.packages.find]
+include = ["ptl*", "scripts*", "tools*"]
+
+[tool.setuptools.package-data]
+"tools.review" = ["*.html"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["B008"]  # argparse default 中使用函数调用是合理的
+"tools/*" = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

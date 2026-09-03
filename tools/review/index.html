@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Quick Annotation · 标注审核</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #14161a;
+    color: #e6e8eb; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; }
+  #app { display: flex; height: 100vh; }
+  #stage { flex: 1; display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden; background: #0d0f12; }
+  #canvas { max-width: 100%; max-height: 100%; cursor: crosshair; will-change: transform; }
+  #side { width: 320px; background: #1b1e24; border-left: 1px solid #2a2e37;
+    padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+  h2 { margin: 0 0 4px; font-size: 15px; }
+  .side-title { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+  .settings-link { color: #9ecbff; text-decoration: none; border: 1px solid #3a3f4b;
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+  .settings-link:hover { background: #2a2e37; color: #fff; }
+  .muted { color: #8b93a1; font-size: 12px; }
+  .bar { height: 8px; background: #2a2e37; border-radius: 4px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: #4ea1ff; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: #232730; border-radius: 6px; padding: 8px; text-align: center; }
+  .stat b { display: block; font-size: 18px; }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+  .red { background: #3a1a1a; color: #ff6b6b; }
+  .green { background: #143119; color: #5bd977; }
+  .unknown { background: #3a2e12; color: #ffc247; }
+  .vehicle { background: #12233a; color: #7fb8ff; }
+  .neg { background: #2a2e37; color: #b7bec9; }
+  .boxrow { display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+    border-radius: 6px; background: #232730; cursor: pointer; }
+  .boxrow.sel { outline: 2px solid #4ea1ff; }
+  .kbd { display: inline-block; min-width: 18px; padding: 1px 5px; text-align: center;
+    background: #2a2e37; border: 1px solid #3a3f4b; border-radius: 4px; font-size: 12px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; font-size: 12px; }
+  .rule-alert { padding: 9px; border: 1px solid #d18b38; border-radius: 7px;
+    color: #ffe0a8; background: #352514; font-size: 12px; line-height: 1.45; }
+  .rule-alert b { color: #fff0c9; font-size: 13px; }
+  body.weak-hints .rule-alert { border-color: #303641; color: #969eaa;
+    background: #20242b; }
+  body.weak-hints .rule-alert b { color: #c5cbd4; font-weight: 500; }
+  body.weak-hints .boxrow { opacity: .78; }
+  body.weak-hints .boxrow.sel { opacity: 1; }
+  button { background: #2a2e37; color: #e6e8eb; border: 1px solid #3a3f4b;
+    border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  button:hover { background: #333846; }
+  #toast { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: #232730; padding: 6px 14px; border-radius: 20px; opacity: 0;
+    transition: opacity .2s; font-size: 13px; }
+  #mode { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 6px;
+    background: #4ea1ff; color: #06121f; font-weight: 600; display: none; }
+  #ver { position: absolute; top: 10px; right: 12px; padding: 3px 9px; border-radius: 6px;
+    background: #1f7a3d; color: #d6ffe2; font: 600 12px/1 ui-monospace, monospace; letter-spacing: .5px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="canvas"></canvas>
+    <div id="mode">画框模式（拖拽绘制，Esc 取消）</div>
+    <div id="ver">R12 · 灯种类硬保护</div>
+    <div id="toast"></div>
+  </div>
+  <div id="side">
+    <div class="side-title">
+      <div>
+        <h2>Quick Annotation</h2>
+        <div class="muted" id="pos">加载中…</div>
+      </div>
+      <a class="settings-link" href="/">⚙ 项目设置</a>
+    </div>
+    <div class="rule-alert" id="review-guidance">
+      <b>先分灯种类，再看红绿/明暗</b><br>
+      只有行人图标或明确的人行专用灯头用 1/2/3。车行圆灯、箭头灯、自行车交通信号灯
+      <b>无论红、绿、熄灭或看不清都选 4</b>。倒计时、摄像头、控制盒直接删除。
+      第 4 类改成人行类时必须输入“人行”二次确认。
+    </div>
+    <div class="bar"><span id="prog" style="width:0"></span></div>
+    <div class="grid">
+      <div class="stat"><b id="s-rev">0</b>已复核</div>
+      <div class="stat"><b id="s-tot">0</b>总数</div>
+      <div class="stat"><b id="s-red" style="color:#ff6b6b">0</b>人行红框</div>
+      <div class="stat"><b id="s-grn" style="color:#5bd977">0</b>人行绿框</div>
+      <div class="stat"><b id="s-unk" style="color:#ffc247">0</b>仅人行不明</div>
+      <div class="stat"><b id="s-veh" style="color:#7fb8ff">0</b>车行/自行车框</div>
+      <div class="stat"><b id="s-neg">0</b>空标注图</div>
+    </div>
+    <hr style="border-color:#2a2e37; width:100%">
+    <div id="legacy-meta">
+      <div class="muted">当前图 <span id="cur-id"></span></div>
+      <div style="margin:6px 0">
+        整图标签(mode): <span id="cur-mode" class="chip neg"></span>
+        映射: <span id="cur-target" class="chip neg"></span>
+        <span id="cur-split" class="muted"></span>
+      </div>
+      <div class="muted">最低框置信度(排序键): <span id="cur-sort"></span></div>
+      <div id="cur-note" style="display:none; margin-top:6px; padding:7px;
+        border:1px solid #8a6d2f; border-radius:5px; color:#ffd778;
+        background:#342a17"></div>
+    </div>
+    <div>
+      <div class="muted" id="candidate-heading" style="margin-bottom:4px">候选框 (<span id="nb">0</span>) · 点框号选中；画布重叠处反复点可切换</div>
+      <div id="boxes" style="display:flex; flex-direction:column; gap:4px"></div>
+      <button id="toggle-overlays" style="display:none; margin-top:7px" onclick="toggleOverlays()">隐藏候选框</button>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap">
+      <button onclick="prev()">← 上一张</button>
+      <button onclick="markReviewed()">通过 (空格)</button>
+      <button onclick="next()">下一张 →</button>
+    </div>
+    <hr style="border-color:#2a2e37; width:100%">
+    <div class="keys">
+      <span class="kbd">空格</span><span>通过并下一张</span>
+      <span class="kbd">D</span><span>删除选中框</span>
+      <span class="kbd">R</span><span>画新框(拖拽)</span>
+      <span class="kbd">1</span><span>人行红（必须是人行灯）</span>
+      <span class="kbd">2</span><span>人行绿（必须是人行灯）</span>
+      <span class="kbd">3</span><span>仅人行灯状态不明</span>
+      <span class="kbd">4</span><span>车行/自行车信号灯（任意状态）</span>
+      <span class="kbd">←→</span><span>翻页</span>
+      <span class="kbd">U</span><span>跳到下一个未复核</span>
+    </div>
+  </div>
+</div>
+<script>
+// name 是稳定的机器/CSS 标识；label 才是给标注员看的名称，二者不要混用。
+const CLS = {
+  0:{name:"red",label:"人行红",color:"#ff5555"},
+  1:{name:"green",label:"人行绿",color:"#3ad06a"},
+  2:{name:"unknown",label:"仅人行不明",color:"#ffb020"},
+  3:{name:"vehicle",label:"车行/自行车(任意状态)",color:"#4ea1ff"}
+};
+let items = [], idx = 0, sel = -1, drawing = false, dragStart = null, tmpBox = null;
+let cyc = {key:"", n:0};  // 画布重叠区循环选择
+let _flip = false;        // 强制合成层刷新用
+let WEAK_HINTS = false, overlaysVisible = true;
+const cv = document.getElementById("canvas"), ctx = cv.getContext("2d");
+let img = new Image(), drawScale = 1, offX = 0, offY = 0;
+
+let SEG = {seg: 0, segs: 1};
+let POOL = false, WORKER = "", remaining = 0, fetching = false;
+async function load() {
+  const q = new URLSearchParams(location.search);
+  WEAK_HINTS = q.get("hints") === "weak"
+    || document.body.dataset.defaultHints === "weak";
+  if (WEAK_HINTS) enableWeakHints();
+  POOL = q.get("pool") === "1";
+  if (POOL) {
+    WORKER = q.get("worker") || ("w" + Math.floor(Math.random()*1e6));
+    await fetchBatch(true);
+    return;
+  }
+  const seg = q.get("seg") || "0", segs = q.get("segs") || "1";
+  const r = await fetch(`/api/manifest?seg=${seg}&segs=${segs}`); const d = await r.json();
+  items = d.items; rememberSeeds(items);
+  SEG = {seg: d.seg ?? 0, segs: d.segs ?? 1}; applyStats(d.stats);
+  const fp = items.findIndex(it => it.status !== "reviewed");
+  idx = fp >= 0 ? fp : 0;
+  show();
+}
+function enableWeakHints() {
+  overlaysVisible = true;
+  document.body.classList.add("weak-hints");
+  document.getElementById("ver").textContent = "R13 · 右侧弱提示";
+  document.getElementById("review-guidance").innerHTML =
+    "<b>弱提示</b><br>预标框照常显示；右侧提示仅供参考，请按画面独立判断。"
+    + "改类和删框不再弹出强确认。";
+  document.getElementById("candidate-heading").innerHTML =
+    '右侧弱提示 (<span id="nb">0</span>) · 点一项可选中对应预标框';
+  document.getElementById("toggle-overlays").style.display = "inline-block";
+  document.getElementById("legacy-meta").querySelectorAll(
+    "#cur-mode, #cur-target, #cur-sort"
+  ).forEach(el => el.closest("div").style.display = "none");
+}
+function toggleOverlays() {
+  overlaysVisible = !overlaysVisible;
+  const button = document.getElementById("toggle-overlays");
+  button.textContent = overlaysVisible ? "隐藏全部候选框" : "显示全部候选框";
+  render();
+}
+// 协作模式: 向服务器领一批"没人领过"的未复核图
+async function fetchBatch(first) {
+  if (fetching) return 0; fetching = true;
+  try {
+    const r = await fetch(`/api/next?worker=${encodeURIComponent(WORKER)}&n=25`);
+    const d = await r.json(); remaining = d.remaining; applyStats(d.stats);
+    if (first) {
+      items = d.items; rememberSeeds(items);
+      if (!items.length) { document.getElementById("pos").textContent = "🎉 全部复核完成，没有剩余图片"; return 0; }
+      idx = 0; show(); return items.length;
+    }
+    const have = new Set(items.map(it => it.id));
+    const fresh = d.items.filter(it => !have.has(it.id));
+    rememberSeeds(fresh); items = items.concat(fresh);
+    return fresh.length;
+  } finally { fetching = false; }
+}
+function segLabel() {
+  if (POOL) return `　|　协作模式 · 全局剩余 ${remaining} · 你(${WORKER})`;
+  if (SEG.segs <= 1) return "";
+  const done = items.filter(it => it.status === "reviewed").length;
+  return `　|　本段 ${SEG.seg + 1}/${SEG.segs}: ${done}/${items.length}`;
+}
+function applyStats(s) {
+  document.getElementById("s-rev").textContent = s.reviewed;
+  document.getElementById("s-tot").textContent = s.total;
+  document.getElementById("s-red").textContent = s.cls_red;
+  document.getElementById("s-grn").textContent = s.cls_green;
+  document.getElementById("s-unk").textContent = s.cls_unknown;
+  document.getElementById("s-veh").textContent = s.cls_vehicle;
+  document.getElementById("s-neg").textContent = s.negatives;
+  document.getElementById("prog").style.width = (100*s.reviewed/Math.max(1,s.total)) + "%";
+}
+function cur() { return items[idx]; }
+function rememberSeeds(values) {
+  values.forEach(it => {
+    if (it._seedBoxes === undefined) it._seedBoxes = JSON.parse(JSON.stringify(it.boxes));
+  });
+}
+
+function show() {
+  const it = cur(); sel = -1; drawing = false; setMode(false);
+  if (WEAK_HINTS) {
+    overlaysVisible = true;
+    document.getElementById("toggle-overlays").textContent = "隐藏候选框";
+  }
+  document.getElementById("pos").textContent =
+     `第 ${idx+1} / ${items.length} 张 · 状态 ${it.status==="reviewed"?"✔已复核":"待复核"}` + segLabel();
+  document.getElementById("cur-id").textContent = it.id;
+  const md = document.getElementById("cur-mode");
+  md.textContent = "mode " + it.mode; md.className = "chip neg";
+  const tg = document.getElementById("cur-target");
+  if (it.target_class === 0) { tg.textContent="人行红"; tg.className="chip red"; }
+  else if (it.target_class === 1) { tg.textContent="人行绿"; tg.className="chip green"; }
+  else if (it.target_class === 2) { tg.textContent="仅人行不明"; tg.className="chip unknown"; }
+  else if (it.target_class === 3) { tg.textContent="车行/自行车"; tg.className="chip vehicle"; }
+  else { tg.textContent="不检测"; tg.className="chip neg"; }
+  document.getElementById("cur-split").textContent = "· " + it.split;
+  document.getElementById("cur-sort").textContent = it.sort_key;
+  const note = document.getElementById("cur-note");
+  const flags = [];
+  if (it.vehicle_only) flags.push("【本帧只允许第 4 类；红绿只是发光颜色】");
+  if (it.requires_change) flags.push("【本帧必须实际修改后才能通过】");
+  note.textContent = flags.join("\n") + (flags.length && it.review_note ? "\n" : "") + (it.review_note || "");
+  note.style.display = (it.review_note || flags.length) ? "block" : "none";
+  img = new Image();
+  img.onload = () => { fit(); render(); };
+  img.src = "/img/" + it.preview;
+  renderBoxList();
+}
+function fit() {
+  const sw = cv.parentElement.clientWidth, sh = cv.parentElement.clientHeight;
+  drawScale = Math.min(sw/img.width, sh/img.height);
+  cv.width = img.width*drawScale; cv.height = img.height*drawScale;
+}
+function render() {
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(img,0,0,cv.width,cv.height);
+  const it = cur();
+  const hasSel = sel>=0 && sel<it.boxes.length;
+  // 弱提示只降低规则文案和确认弹窗的强度，预标框仍默认正常显示。
+  // 用户可临时隐藏全部框，以便检查有没有模型未提示的漏标目标。
+  if (!WEAK_HINTS || overlaysVisible) {
+    it.boxes.forEach((b,i) => { if(i!==sel) drawBox(b, i, false, hasSel); });
+  }
+  if (hasSel) drawBox(it.boxes[sel], sel, true, false);
+  if (tmpBox) drawBox(tmpBox, -1, true, false, true);
+  // 强制合成层刷新: 某些GPU下canvas 2D绘制(非布局触发)后不重合成 ->
+  // 点击后删/改/高亮看不到, 需nudge transform 逼合成器重读画布纹理(位移0.03px不可见)
+  _flip = !_flip;
+  cv.style.transform = _flip ? "translateX(0.03px)" : "translateX(0px)";
+}
+function drawBox(b, i, selected, dim, dashed) {
+  const x=(b.cx-b.w/2)*cv.width, y=(b.cy-b.h/2)*cv.height,
+        w=b.w*cv.width, h=b.h*cv.height;
+  const color = CLS[b.cls]?.color || "#ffd23f";
+  ctx.save();
+  ctx.setLineDash(dashed?[6,4]:[]);
+  if (dim) ctx.globalAlpha = 0.3;
+  if (selected && !dashed) {
+    ctx.shadowColor = "#fff"; ctx.shadowBlur = 14;      // 白色发光
+    ctx.lineWidth = 5; ctx.strokeStyle = "#ffffff"; ctx.strokeRect(x,y,w,h);
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.strokeRect(x,y,w,h);
+  } else {
+    ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.strokeRect(x,y,w,h);
+  }
+  ctx.restore();
+  // 编号徽标(与右侧列表一一对应)
+  if (i>=0) {
+    const n = String(i+1);
+    ctx.save();
+    if (dim) ctx.globalAlpha = 0.5;
+    ctx.font = "bold 12px sans-serif"; ctx.textBaseline = "top";
+    const bw = 8 + n.length*8;
+    const by = Math.max(0, y-16);
+    ctx.fillStyle = selected ? "#fff" : color;
+    ctx.fillRect(x-1, by, bw, 16);
+    ctx.fillStyle = selected ? color : "#0d0f12";
+    ctx.fillText(n, x+4, by+1);
+    if (selected) {  // 选中额外显示 类别+conf
+      ctx.fillStyle = color; ctx.font = "12px sans-serif";
+      ctx.fillText(`${CLS[b.cls]?.label||"?"} ${b.conf ?? ""}`, x+bw+2, by+1);
+    }
+    ctx.restore();
+  }
+}
+function renderBoxList() {
+  const it = cur(); document.getElementById("nb").textContent = it.boxes.length;
+  const c = document.getElementById("boxes"); c.innerHTML = "";
+  it.boxes.forEach((b,i) => {
+    const row = document.createElement("div");
+    row.className = "boxrow" + (i===sel?" sel":"");
+    row.innerHTML = `<b style="min-width:14px;text-align:center;color:${CLS[b.cls]?.color||'#ffd23f'}">${i+1}</b>`
+      + `<span class="chip ${CLS[b.cls]?.name||'neg'}">${CLS[b.cls]?.label||'?'}</span>`
+      + `<span class="muted">conf ${b.conf ?? '—'}</span>`
+      + `<span class="muted" style="margin-left:auto">${(b.w*b.h*100).toFixed(2)}%</span>`;
+    row.onclick = () => { sel=i; cyc.key=""; render(); renderBoxList(); };
+    c.appendChild(row);
+  });
+}
+function setMode(on){ drawing=on; document.getElementById("mode").style.display=on?"block":"none";
+  cv.style.cursor = on?"crosshair":"default"; }
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.style.opacity=1;
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity=0,1200); }
+
+async function save(status){
+  const it = cur();
+  it.status = status || it.status || "pending";
+  const orig = JSON.stringify(it._orig ?? []);
+  it._changed = it._changed || (JSON.stringify(it.boxes)!==orig);
+  const r = await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({id:it.id, status:it.status, boxes:it.boxes, changed:!!it._changed,
+      by: POOL ? WORKER : (SEG.segs>1 ? ("seg"+SEG.seg) : "")})});
+  const d = await r.json(); applyStats(d.stats);
+}
+function markReviewed(){
+  const it = cur();
+  if (it.requires_change
+      && JSON.stringify(it.boxes) === JSON.stringify(it._seedBoxes ?? it.boxes)) {
+    alert("本帧的返修提示要求实际修改框或类别，不能直接按空格通过。请按右侧提示完成后再提交。");
+    return;
+  }
+  save("reviewed").then(()=>{ toast("✔ 已复核"); nextPending(); });
+}
+async function next(){ save();
+  if(idx<items.length-1){ idx++; show(); return; }
+  if(POOL){ const g=await fetchBatch(false); if(g>0){ idx++; show(); } else toast("🎉 没有更多了"); }
+}
+function prev(){ save(); if(idx>0){idx--; show();} }
+async function nextPending(){ save();
+  let j=idx+1; while(j<items.length && items[j].status==="reviewed") j++;
+  if(j<items.length){ idx=j; show(); return; }
+  if(POOL){                       // 本地这批标完了, 再向服务器领一批
+    const g=await fetchBatch(false);
+    if(g>0){ let k=idx+1; while(k<items.length && items[k].status==="reviewed") k++;
+             idx = k<items.length? k : items.length-1; show(); }
+    else toast("🎉 全部标完了, 没有剩余了");
+  } else if(idx<items.length-1){ idx++; show(); }
+  else toast("本段已到末尾"); }
+
+// 记录原始框用于"是否改动"统计
+function ensureOrig(){ const it=cur(); if(it._orig===undefined) it._orig=JSON.parse(JSON.stringify(it.boxes)); }
+function overlapOverSmaller(a, b) {
+  const ax1=a.cx-a.w/2, ay1=a.cy-a.h/2, ax2=a.cx+a.w/2, ay2=a.cy+a.h/2;
+  const bx1=b.cx-b.w/2, by1=b.cy-b.h/2, bx2=b.cx+b.w/2, by2=b.cy+b.h/2;
+  const inter=Math.max(0,Math.min(ax2,bx2)-Math.max(ax1,bx1))
+    * Math.max(0,Math.min(ay2,by2)-Math.max(ay1,by1));
+  return inter / Math.max(1e-12, Math.min(a.w*a.h, b.w*b.h));
+}
+function setSelectedClass(nextClass) {
+  if (sel < 0) return;
+  if (!WEAK_HINTS && cur().vehicle_only && nextClass !== 3) {
+    alert("本帧已逐帧核实只含车行/非机动车信号灯，只允许第 4 类。红色、绿色或暗灯都不能标成人行类。");
+    return;
+  }
+  const box = cur().boxes[sel];
+  if (!WEAK_HINTS && box.cls === 3 && nextClass !== 3) {
+    const answer = prompt(
+      "危险改类：当前框是第 4 类车行/自行车信号灯。灯是红色或绿色都不能改成人行类。"
+      + "\n只有框内能确认是行人图标/人行专用灯头时，才输入“人行”继续："
+    );
+    if (answer !== "人行") { toast("已取消：颜色不决定灯种类"); return; }
+  }
+  ensureOrig(); box.cls = nextClass; cur()._changed=true; render(); renderBoxList();
+}
+
+// 鼠标：选框 / 画框
+cv.addEventListener("mousedown", e=>{
+  const r=cv.getBoundingClientRect(); const nx=(e.clientX-r.left)/cv.width, ny=(e.clientY-r.top)/cv.height;
+  ensureOrig();
+  if(drawing){ dragStart=[nx,ny]; tmpBox=null; return; }
+  // 命中测试: 覆盖该点的所有框(小框优先), 同一点反复点则循环切换
+  const it=cur();
+  const hits=it.boxes.map((b,i)=>({i,b}))
+    .filter(({b})=>Math.abs(nx-b.cx)<=b.w/2 && Math.abs(ny-b.cy)<=b.h/2)
+    .sort((a,b)=>(a.b.w*a.b.h)-(b.b.w*b.b.h));
+  if(!hits.length){ sel=-1; cyc.key=""; }
+  else {
+    const key=hits.map(h=>h.i).join(",");
+    if(key===cyc.key){ cyc.n=(cyc.n+1)%hits.length; } else { cyc.key=key; cyc.n=0; }
+    sel=hits[cyc.n].i;
+  }
+  render(); renderBoxList();
+});
+cv.addEventListener("mousemove", e=>{
+  if(!drawing || !dragStart) return;
+  const r=cv.getBoundingClientRect(); const nx=(e.clientX-r.left)/cv.width, ny=(e.clientY-r.top)/cv.height;
+  const x1=Math.min(dragStart[0],nx), y1=Math.min(dragStart[1],ny),
+        x2=Math.max(dragStart[0],nx), y2=Math.max(dragStart[1],ny);
+  const t=cur().target_class;
+  tmpBox={cls:(cur().vehicle_only?3:(t>=0?t:0)), cx:(x1+x2)/2, cy:(y1+y2)/2, w:x2-x1, h:y2-y1};
+  render();
+});
+window.addEventListener("mouseup", ()=>{
+  if(drawing && tmpBox && tmpBox.w>0.003 && tmpBox.h>0.003){
+    tmpBox.conf=1.0; cur().boxes.push(tmpBox); sel=cur().boxes.length-1;
+    cur()._changed=true; toast("+ 新框");
+  }
+  dragStart=null; tmpBox=null; setMode(false); render(); renderBoxList();
+});
+
+document.addEventListener("keydown", e=>{
+  if(e.key===" "){ e.preventDefault(); markReviewed(); }
+  else if(e.key==="ArrowRight") next();
+  else if(e.key==="ArrowLeft") prev();
+  else if(e.key.toLowerCase()==="d"){ if(sel>=0){
+      const box=cur().boxes[sel];
+      const overlaps=cur().boxes.some((other,i)=>i!==sel && overlapOverSmaller(box,other)>=0.5);
+      if(!WEAK_HINTS && box.cls===3 && !overlaps
+          && !confirm("这是一个没有重叠替代框的第 4 类灯头。确认它是误框/背景并删除吗？")) return;
+      ensureOrig(); cur().boxes.splice(sel,1); sel=-1;
+      cur()._changed=true; render(); renderBoxList(); toast("− 删框"); } }
+  else if(e.key.toLowerCase()==="r"){ setMode(!drawing); }
+  else if(e.key==="Escape"){ setMode(false); tmpBox=null; render(); }
+  else if(e.key.toLowerCase()==="u"){ nextPending(); }
+  else if(["1","2","3","4"].includes(e.key) && sel>=0){
+    setSelectedClass({"1":0,"2":1,"3":2,"4":3}[e.key]);
+  }
+});
+window.addEventListener("resize", ()=>{ if(img.width){ fit(); render(); } });
+// 自愈: 注销任何遗留的 Service Worker + 清缓存(旧项目可能在此端口注册过, 拦截喂旧页面)
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.getRegistrations().then(rs=>{ if(rs.length){ rs.forEach(r=>r.unregister()); } }).catch(()=>{});
+}
+if (window.caches && caches.keys) { caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{}); }
+load();
+</script>
+</body>
+</html>

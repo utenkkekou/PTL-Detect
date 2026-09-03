@@ -1,0 +1,10 @@
+{
+  "input_dir": "",
+  "output_dir": "",
+  "base_url": "https://api.openai.com/v1",
+  "api_key": "",
+  "model": "",
+  "recursive": true,
+  "workers": 2,
+  "prompt": "请识别图片中的交通信号灯，并严格按照项目 README 中的 JSON 格式返回候选框。"
+}

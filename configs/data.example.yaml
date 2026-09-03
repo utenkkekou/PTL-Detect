@@ -1,0 +1,11 @@
+# Set path to your own YOLO dataset root (an absolute path is recommended).
+path: ./data/example
+train: images/train
+val: images/val
+test: images/test
+nc: 4
+names:
+  - pedestrian_signal_red
+  - pedestrian_signal_green
+  - pedestrian_signal_unknown
+  - vehicle_signal

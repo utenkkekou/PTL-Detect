@@ -1,0 +1,53 @@
+# T3 Step2 — COCO traffic-light 候选框 -> 人行灯候选 的过滤规则
+# ⚠️ D19 后 ImVisible 已弃用；本文件只保留给历史流程复现，不得再用它构建当前训练集。
+# 当前 clean4 数据以高清自采 T10 为主，类别 3 的非行人信号灯需单独候选 + 人工复核。
+# 全部可调。默认值是"先验起点"，必须先在 20 张样本上验证再固化（见 TASKS.md T3 Step2）。
+#
+# ⚠️ 位置先验（"人行灯在画面中上部"）是【未验证假设】。
+#    ptl_pre_annotate.py 带 --verify-prior 模式，会在样本上统计假设是否成立，
+#    确认成立前不要把 position 过滤设成硬性 drop。
+
+# COCO 检测阶段
+detect:
+  model: yolo11x.pt        # 大模型多召回；若召回不足可换 yolo26x.pt / 提高 imgsz
+  coco_class: 9            # COCO 'traffic light'
+  conf: 0.15              # 放低阈值宁可多召回，后面再过滤
+  imgsz: 1280             # 小目标，用大 imgsz 检测（图片本身是 4032×3024）
+  iou: 0.5
+
+# 过滤规则（对每个候选框，归一化坐标 0~1）
+filter:
+  # 面积占比：过滤太小(判读不了)和太大(贴脸误检)
+  min_area_frac: 0.00015   # ~ 1/6500，太小的远处噪点
+  max_area_frac: 0.15      # 太大基本是误检或车行灯贴脸
+
+  # 长宽比 = w/h。人行灯灯箱通常接近正方形或竖长方形(高>宽) → w/h 偏小
+  min_aspect: 0.25
+  max_aspect: 2.2
+
+  # 位置先验（软规则，先验证）：中心 y 归一化。上部=小。
+  # enabled=false 时只记录不 drop；--verify-prior 会统计真实分布。
+  position:
+    enabled: false
+    max_cy: 0.75           # 若启用：中心低于此(更靠下)的丢弃
+
+# 同图多框处理：PTL 是整图单标签
+multi_box:
+  # 一张图筛出多个候选时：
+  #   keep_all  -> 全保留，交人工复核
+  #   keep_topk -> 按 conf 保留前 k 个
+  strategy: keep_all
+  topk: 3
+  flag_for_review: true    # 多框图强制标记为"需人工看"
+
+# 标签赋值（image-level class -> 目标类）
+# 这里只是旧 ImVisible 图级标签的 3 个行人灯起始建议，不是当前 4 类 App 契约。
+# 当前第4类 3=vehicle_signal 无法由 ImVisible mode 推出；-1 = 不检测(空列表, 无框)。
+# ImVisible mode: 0=Red 1=Green 2=CountdownGreen 3=CountdownBlank 4=None
+# 注意: 这只是给复核工具的"起始建议", 人工复核会最终裁定 red/green/unknown。
+class_map:
+  0: 0    # Red            -> red
+  1: 1    # Green          -> green
+  2: 1    # CountdownGreen -> green (绿色走动小人可见 + 倒计时)
+  3: 2    # CountdownBlank -> unknown (图标空白/过渡态; ⚠️待抽检确认, 见 decisions D9)
+  4: -1   # None           -> 不检测(空, 无框)
