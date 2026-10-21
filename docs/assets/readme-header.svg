@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">PTL-Detect — From pixels to reviewed evidence</title>
+  <desc id="desc">Pedestrian traffic light engineering toolkit: annotate, review, evaluate and export. Abstract illustration of the four-class label contract.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#081524"/><stop offset="1" stop-color="#102838"/></linearGradient>
+    <linearGradient id="accent"><stop stop-color="#68F0D2"/><stop offset="1" stop-color="#67B8FF"/></linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#5C9DB8" stroke-opacity=".09"/></pattern>
+  </defs>
+  <rect width="1280" height="360" rx="20" fill="url(#bg)"/>
+  <rect width="1280" height="360" rx="20" fill="url(#grid)"/>
+  <rect x="52" y="47" width="27" height="5" rx="2" fill="#68F0D2"/>
+  <text x="92" y="55" fill="#A7BED0" font-family="Arial,sans-serif" font-size="13" letter-spacing="3">VISION ENGINEERING / FOUR-CLASS CONTRACT</text>
+  <text x="49" y="135" fill="#F0F8FF" font-family="Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="-2">PTL-Detect</text>
+  <text x="52" y="176" fill="#68F0D2" font-family="Arial,sans-serif" font-size="23">From pixels to reviewed evidence.</text>
+  <text x="52" y="215" fill="#A7BED0" font-family="Arial,sans-serif" font-size="16">Pedestrian traffic light annotation, training and error analysis.</text>
+  <g fill="#102F3B" stroke="#315366"><rect x="52" y="263" width="120" height="37" rx="8"/><rect x="184" y="263" width="110" height="37" rx="8"/><rect x="306" y="263" width="120" height="37" rx="8"/><rect x="438" y="263" width="110" height="37" rx="8"/></g>
+  <g fill="#DBF3F4" font-family="Arial,sans-serif" font-size="12" text-anchor="middle" letter-spacing="1.6"><text x="112" y="286">ANNOTATE</text><text x="239" y="286">REVIEW</text><text x="366" y="286">EVALUATE</text><text x="493" y="286">EXPORT</text></g>
+  <rect x="769" y="49" width="459" height="263" rx="14" fill="#091723" stroke="#34556A"/>
+  <path d="M769 86H1228" stroke="#34556A"/>
+  <circle cx="790" cy="68" r="4" fill="#68F0D2"/>
+  <text x="807" y="72" fill="#A7BED0" font-family="monospace" font-size="11" letter-spacing="1.5">LABEL CONTRACT / 0..3</text>
+  <g fill="#152B3B" stroke="#29485C"><rect x="796" y="111" width="81" height="132" rx="10"/><rect x="903" y="111" width="81" height="132" rx="10"/><rect x="1010" y="111" width="81" height="132" rx="10"/><rect x="1117" y="111" width="81" height="132" rx="10"/></g>
+  <g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#FF707E"><circle cx="836" cy="144" r="8"/><path d="M836 164V192M836 169L820 185M836 169L852 185M836 192L821 216M836 192L851 216"/></g>
+    <g stroke="#68F0B1"><circle cx="943" cy="144" r="8"/><path d="M943 164V192M943 169L927 185M943 169L959 185M943 192L928 216M943 192L958 216"/></g>
+    <g stroke="#96ABC2"><circle cx="1050" cy="144" r="8"/><path d="M1050 164V192M1050 169L1034 185M1050 169L1066 185M1050 192L1035 216M1050 192L1065 216" stroke-dasharray="5 5"/></g>
+  </g>
+  <circle cx="1157" cy="143" r="12" fill="#FFB664" opacity=".3"/><circle cx="1157" cy="177" r="12" fill="#FFB664" opacity=".5"/><circle cx="1157" cy="211" r="12" fill="#FFB664"/>
+  <g fill="#AEC8DA" font-family="monospace" font-size="11" text-anchor="middle"><text x="836" y="269">0 / RED</text><text x="943" y="269">1 / GREEN</text><text x="1050" y="269">2 / UNKNOWN</text><text x="1157" y="269">3 / VEHICLE</text></g>
+  <path d="M798 289H1198" stroke="url(#accent)" stroke-width="2"/>
+</svg>
